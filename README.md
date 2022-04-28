@@ -1,3 +1,11 @@
+katoyu MEMO
+
+git config --global user.email "yuik2525@gmail.com"
+git config --global user.name "katoyu"
+
+
+--------------
+
 ## Improved Precision and Recall Metric for Assessing Generative Models &mdash; Official TensorFlow Implementation 
 ![Python 3.6](https://img.shields.io/badge/python-3.6-green.svg?style=plastic)
 ![TensorFlow 1.12](https://img.shields.io/badge/tensorflow-1.12-green.svg?style=plastic)
