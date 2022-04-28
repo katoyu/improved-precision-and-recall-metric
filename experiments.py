@@ -19,6 +19,9 @@ from precision_recall import ManifoldEstimator
 from utils import initialize_feature_extractor
 from utils import initialize_stylegan
 
+
+import glob
+
 #----------------------------------------------------------------------------
 # Helper functions.
 
@@ -224,6 +227,7 @@ def compute_stylegan_ccr(datareader, minibatch_size, num_images, ccrs,
 
     # Initialize StyleGAN generator.
     # TODO: 提案システムへ修正
+        # TODO: 学習済みモデルの読み込み
     Gs = initialize_stylegan()
 
     metric_results = np.zeros([len(ccrs), 3], dtype=np.float32)
@@ -238,8 +242,10 @@ def compute_stylegan_ccr(datareader, minibatch_size, num_images, ccrs,
             end = min(begin + minibatch_size, num_images)
 
             # TODO: tfrecordなしでのデータ読み込み
+            dataset = dataset_load(path='')
             # TODO: tfrecordなしでのバッチ作成
                 # TODO: real_batch.shapeを確認
+            
             real_batch, _ = datareader.get_minibatch_np(end - begin)
             ref_features[begin:end] = feature_net.run(real_batch, num_gpus=num_gpus, assume_frozen=True)
 
@@ -251,7 +257,11 @@ def compute_stylegan_ccr(datareader, minibatch_size, num_images, ccrs,
             latent_batch = rnd.randn(end - begin, *Gs.input_shape[1:])
 
             # TODO: 画像生成を提案システムの方に置き換え
-                # TODO: gen_images.shapeを確認
+                # TODO: データセット画像の潜在空間への埋め込み
+                # TODO: 次元圧縮
+                # TODO: 50000枚サンプリング（暖機運転期間を設ける）→gen_imagesとして使用
+                    # TODO: gen_images.shapeを確認
+
             gen_images = Gs.run(latent_batch, None, ccr=ccr, ccr_cutoff=18, randomize_noise=True, output_transform=fmt)
             eval_features[begin:end] = feature_net.run(gen_images, num_gpus=num_gpus, assume_frozen=True)
 
@@ -275,3 +285,15 @@ def compute_stylegan_ccr(datareader, minibatch_size, num_images, ccrs,
         header = 'ccr,precision,recall'
         np.savetxt(result_file, metric_results, header=header,
                    delimiter=',', comments='')
+
+
+
+def dataset_load(path=''):
+    # load dataset from npy
+    npy_paths = glob.glob(os.path.join(path, '*.npy'))
+    
+    # npy to img
+    imgs = ###
+    
+    return imgs
+
