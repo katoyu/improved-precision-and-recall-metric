@@ -196,3 +196,82 @@ def compute_stylegan_realism(datareader, minibatch_size, num_images, num_gen_ima
     print('Done evaluating StyleGAN realism.\n')
 
 #----------------------------------------------------------------------------
+
+# katoyu coding area
+#----------------------------------------------------------------------------
+
+def compute_stylegan_ccr(datareader, minibatch_size, num_images, ccrs,
+                                num_gpus, random_seed, save_txt=None, save_path=None):
+    """StyleGAN ccr sweep. (Fig. 4)
+
+        Args:
+            datareader (): FFHQ datareader object.
+            minibatch_size (int): Minibatch size.
+            num_images (int): Number of images used to evaluate precision and recall.
+            ccrs (list): List of ccr values.
+            save_txt (string): Name of result file.
+            save_path (string): Absolute path to directory where result textfile is saved.
+            num_gpus (int): Number of GPUs used.
+            random_seed (int): Random seed.
+
+    """
+    print('Running StyleGAN ccr sweep...')
+    rnd = np.random.RandomState(random_seed)
+    fmt = dict(func=dnnlib.tflib.convert_images_to_uint8)
+
+    # Initialize VGG-16.
+    feature_net = initialize_feature_extractor()
+
+    # Initialize StyleGAN generator.
+    # TODO: 提案システムへ修正
+    Gs = initialize_stylegan()
+
+    metric_results = np.zeros([len(ccrs), 3], dtype=np.float32)
+    for i, ccr in enumerate(ccrs):
+        print('ccr %g' % ccr)
+        it_start = time()
+
+        # Calculate VGG-16 features for real images.
+        print('Reading real images...')
+        ref_features = np.zeros([num_images, feature_net.output_shape[1]], dtype=np.float32)
+        for begin in range(0, num_images, minibatch_size):
+            end = min(begin + minibatch_size, num_images)
+
+            # TODO: tfrecordなしでのデータ読み込み
+            # TODO: tfrecordなしでのバッチ作成
+                # TODO: real_batch.shapeを確認
+            real_batch, _ = datareader.get_minibatch_np(end - begin)
+            ref_features[begin:end] = feature_net.run(real_batch, num_gpus=num_gpus, assume_frozen=True)
+
+        # Calculate VGG-16 features for generated images.
+        print('Generating images...')
+        eval_features = np.zeros([num_images, feature_net.output_shape[1]], dtype=np.float32)
+        for begin in range(0, num_images, minibatch_size):
+            end = min(begin + minibatch_size, num_images)
+            latent_batch = rnd.randn(end - begin, *Gs.input_shape[1:])
+
+            # TODO: 画像生成を提案システムの方に置き換え
+                # TODO: gen_images.shapeを確認
+            gen_images = Gs.run(latent_batch, None, ccr=ccr, ccr_cutoff=18, randomize_noise=True, output_transform=fmt)
+            eval_features[begin:end] = feature_net.run(gen_images, num_gpus=num_gpus, assume_frozen=True)
+
+        # Calculate k-NN precision and recall.
+        state = knn_precision_recall_features(ref_features, eval_features, num_gpus=num_gpus)
+
+        # Store results.
+        metric_results[i, 0] = ccr
+        metric_results[i, 1] = state['precision'][0]
+        metric_results[i, 2] = state['recall'][0]
+
+        # Print progress.
+        print('Precision: %0.3f' % state['precision'][0])
+        print('Recall: %0.3f' % state['recall'][0])
+        print('Iteration time: %gs\n' % (time() - it_start))
+
+    # Save results.
+    if save_txt:
+        result_path = save_path
+        result_file = os.path.join(result_path, 'stylegan_ccr.txt')
+        header = 'ccr,precision,recall'
+        np.savetxt(result_file, metric_results, header=header,
+                   delimiter=',', comments='')
