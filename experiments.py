@@ -68,23 +68,33 @@ def compute_stylegan_truncation(datareader, minibatch_size, num_images, truncati
 
         # Calculate VGG-16 features for real images.
         print('Reading real images...')
-        ref_features = np.zeros([num_images, feature_net.output_shape[1]], dtype=np.float32)
+        ref_features = np.zeros([num_images, feature_net.output_shape[1]], dtype=np.float32) # (50000,4096)
+        print('ref_features', ref_features.shape, ref_features)
         for begin in range(0, num_images, minibatch_size):
             end = min(begin + minibatch_size, num_images)
-            real_batch, _ = datareader.get_minibatch_np(end - begin)
+            real_batch, _ = datareader.get_minibatch_np(end - begin) # (8,3,4,4)
+            # print('real_batch', real_batch.shape, real_batch)
+            print('real_batch', real_batch.shape)
             ref_features[begin:end] = feature_net.run(real_batch, num_gpus=num_gpus, assume_frozen=True)
+            print('ref_features', ref_features.shape, ref_features)
 
         # Calculate VGG-16 features for generated images.
         print('Generating images...')
-        eval_features = np.zeros([num_images, feature_net.output_shape[1]], dtype=np.float32)
+        eval_features = np.zeros([num_images, feature_net.output_shape[1]], dtype=np.float32) # (50000,4096)
+        print('eval_features', eval_features.shape, eval_features)
         for begin in range(0, num_images, minibatch_size):
             end = min(begin + minibatch_size, num_images)
-            latent_batch = rnd.randn(end - begin, *Gs.input_shape[1:])
-            gen_images = Gs.run(latent_batch, None, truncation_psi=truncation, truncation_cutoff=18, randomize_noise=True, output_transform=fmt)
+            latent_batch = rnd.randn(end - begin, *Gs.input_shape[1:]) # (8,512)
+            # print('latent_batch', latent_batch.shape, latent_batch)
+            print('latent_batch', latent_batch.shape)
+            gen_images = Gs.run(latent_batch, None, truncation_psi=truncation, truncation_cutoff=18, randomize_noise=True, output_transform=fmt) # (8,3,1024,1024)
+            print('gen_images', gen_images.shape)
             eval_features[begin:end] = feature_net.run(gen_images, num_gpus=num_gpus, assume_frozen=True)
+            print('eval_features', eval_features.shape, eval_features)
 
         # Calculate k-NN precision and recall.
         state = knn_precision_recall_features(ref_features, eval_features, num_gpus=num_gpus)
+        print('state', state)
 
         # Store results.
         metric_results[i, 0] = truncation
@@ -142,7 +152,8 @@ def compute_stylegan_realism(datareader, minibatch_size, num_images, num_gen_ima
     for begin in range(0, num_images, minibatch_size):
         end = min(begin + minibatch_size, num_images)
         real_batch, _ = datareader.get_minibatch_np(end - begin)
-        print('real_batch', real_batch.shape, real_batch)
+        # print('real_batch', real_batch.shape, real_batch)
+        print('real_batch', real_batch.shape)
         real_features[begin:end] = feature_net.run(real_batch, num_gpus=num_gpus, assume_frozen=True)
 
     # Estimate manifold of real images.
@@ -158,7 +169,8 @@ def compute_stylegan_realism(datareader, minibatch_size, num_images, num_gen_ima
     for begin in range(0, num_gen_images, minibatch_size):
         end = min(begin + minibatch_size, num_gen_images)
         latent_batch = rnd.randn(end - begin, *Gs.input_shape[1:])
-        print('latent_batch', latent_batch.shape, latent_batch)
+        # print('latent_batch', latent_batch.shape, latent_batch)
+        print('latent_batch', latent_batch.shape)
         gen_images = Gs.run(latent_batch, None, truncation_psi=truncation, truncation_cutoff=18, randomize_noise=True, output_transform=fmt)
         fake_features[begin:end] = feature_net.run(gen_images, num_gpus=num_gpus, assume_frozen=True)
         latents[begin:end] = latent_batch
