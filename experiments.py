@@ -72,7 +72,7 @@ def compute_stylegan_truncation(datareader, minibatch_size, num_images, truncati
         print('ref_features', ref_features.shape, ref_features)
         for begin in range(0, num_images, minibatch_size):
             end = min(begin + minibatch_size, num_images)
-            real_batch, _ = datareader.get_minibatch_np(end - begin) # (8,3,4,4)
+            real_batch, _ = datareader.get_minibatch_np(end - begin) # (8,3,n,n) n = 2^a, *_a.tfrecords
             # print('real_batch', real_batch.shape, real_batch)
             print('real_batch', real_batch.shape)
             ref_features[begin:end] = feature_net.run(real_batch, num_gpus=num_gpus, assume_frozen=True)
@@ -360,17 +360,18 @@ def compute_stylegan_ccr_from_imgs(datareader, minibatch_size, num_images, ccrs,
         # Calculate VGG-16 features for generated images.
         print('Generating images...')
         eval_features = np.zeros([num_images, feature_net.output_shape[1]], dtype=np.float32)
+
+        # TODO: 生成済み画像を使用、2048枚読み込み
+        gen_images = dataset_load_from_img()
+
         for begin in range(0, num_images, minibatch_size):
             end = min(begin + minibatch_size, num_images)
             latent_batch = rnd.randn(end - begin, *Gs.input_shape[1:])
-
-            # TODO: 画像生成を提案システムの方に置き換え
-                # TODO: データセット画像の潜在空間への埋め込み
-                # TODO: 次元圧縮
-                # TODO: 50000枚サンプリング（暖機運転期間を設ける）→gen_imagesとして使用
-                    # TODO: gen_images.shapeを確認
-
-            gen_images = Gs.run(latent_batch, None, ccr=ccr, ccr_cutoff=18, randomize_noise=True, output_transform=fmt)
+            
+            print(begin, end)
+            # gen_images = Gs.run(latent_batch, None, ccr=ccr, ccr_cutoff=18, randomize_noise=True, output_transform=fmt) # (batch_size,3,1024,1024)
+            gen_images_batch = gen_images[begin:end] # (n,3,1024,1024) -> (batch_size,3,1024,1024)
+            
             eval_features[begin:end] = feature_net.run(gen_images, num_gpus=num_gpus, assume_frozen=True)
 
         # Calculate k-NN precision and recall.
@@ -403,5 +404,6 @@ def dataset_load_from_img(path=''):
     imgs = []
     for path in paths:
         img = cv2.imread(path)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         imgs.append(img)
-    return imgs
+    return imgs 
