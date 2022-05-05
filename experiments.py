@@ -346,33 +346,36 @@ def compute_stylegan_ccr_from_imgs(datareader, minibatch_size, num_images, ccrs,
         # Calculate VGG-16 features for real images.
         print('Reading real images...')
         ref_features = np.zeros([num_images, feature_net.output_shape[1]], dtype=np.float32)
+
+        # TODO: tfrecordなしでのデータ読み込み
+        real_images = imageset_load_from_img(path_img='/content/drive/MyDrive/research/stylegan2encoder/out/rizin112/face-1024x1024/imgs')
+
         for begin in range(0, num_images, minibatch_size):
             end = min(begin + minibatch_size, num_images)
+            print(begin, end)
 
-            # TODO: tfrecordなしでのデータ読み込み
-            dataset = dataset_load_from_img(path='/content/drive/My Drive/stylegan2encoder/out/Johnnys103/face-1024x1024/imgs/')
             # TODO: tfrecordなしでのバッチ作成
-                # TODO: real_batch.shapeを確認  # (8,3,n,n) n = 2^a, *_a.tfrecords
-            
-            real_batch, _ = datareader.get_minibatch_np(end - begin)
+            # real_batch.shape = (8,3,n,n) (n = 2^a, *_a.tfrecords)
+            real_batch = real_images[begin:end] # (dataset_size,3,1024,1024) -> (batch_size,3,1024,1024) batch_size=8
+            # real_batch, _ = datareader.get_minibatch_np(end - begin)
             ref_features[begin:end] = feature_net.run(real_batch, num_gpus=num_gpus, assume_frozen=True)
+
 
         # Calculate VGG-16 features for generated images.
         print('Generating images...')
         eval_features = np.zeros([num_images, feature_net.output_shape[1]], dtype=np.float32)
 
         # TODO: 生成済み画像を使用、2048枚読み込み
-        gen_images = dataset_load(path='/content/drive/My Drive/stylegan2encoder/out/rizin112/face-1024x1024/2048/imgs/ccr' + f'{ccr:.02f}')
+        gen_images = imageset_load_from_img(path_img='/content/drive/MyDrive/research/stylegan2encoder/out/rizin112/face-1024x1024/2048/imgs/ccr' + f'{ccr:.02f}')
 
         for begin in range(0, num_images, minibatch_size):
             end = min(begin + minibatch_size, num_images)
-            latent_batch = rnd.randn(end - begin, *Gs.input_shape[1:])
-            
             print(begin, end)
+            # latent_batch = rnd.randn(end - begin, *Gs.input_shape[1:])
+
+            gen_batch = gen_images[begin:end] # (n,3,1024,1024) -> (batch_size,3,1024,1024)
             # gen_images = Gs.run(latent_batch, None, ccr=ccr, ccr_cutoff=18, randomize_noise=True, output_transform=fmt) # (batch_size,3,1024,1024)
-            gen_images_batch = gen_images[begin:end] # (n,3,1024,1024) -> (batch_size,3,1024,1024)
-            
-            eval_features[begin:end] = feature_net.run(gen_images, num_gpus=num_gpus, assume_frozen=True)
+            eval_features[begin:end] = feature_net.run(gen_batch, num_gpus=num_gpus, assume_frozen=True)
 
         # Calculate k-NN precision and recall.
         state = knn_precision_recall_features(ref_features, eval_features, num_gpus=num_gpus)
@@ -396,7 +399,7 @@ def compute_stylegan_ccr_from_imgs(datareader, minibatch_size, num_images, ccrs,
                    delimiter=',', comments='')
 
 
-def dataset_load_from_img(path_img=''):
+def imageset_load_from_img(path_img=''):
     # load dataset from npy
     paths = glob.glob(os.path.join(path_img, '*.png'))
     paths = sorted(paths)
@@ -410,4 +413,9 @@ def dataset_load_from_img(path_img=''):
 
     imgs_np = np.array(imgs)
     print(imgs_np.shape)
-    return imgs_np 
+    return imgs_np
+
+
+#
+# checking test comment
+#
