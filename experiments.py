@@ -69,14 +69,14 @@ def compute_stylegan_truncation(datareader, minibatch_size, num_images, truncati
         # Calculate VGG-16 features for real images.
         print('Reading real images...')
         ref_features = np.zeros([num_images, feature_net.output_shape[1]], dtype=np.float32) # (50000,4096)
-        print('ref_features', ref_features.shape, ref_features)
+        print('ref_features', ref_features.shape, ref_features, type(ref_features))
         for begin in range(0, num_images, minibatch_size):
             end = min(begin + minibatch_size, num_images)
             real_batch, _ = datareader.get_minibatch_np(end - begin) # (8,3,n,n) n = 2^a, *_a.tfrecords
             # print('real_batch', real_batch.shape, real_batch)
-            print('real_batch', real_batch.shape)
+            print('real_batch', real_batch.shape, type(real_batch))
             ref_features[begin:end] = feature_net.run(real_batch, num_gpus=num_gpus, assume_frozen=True)
-            print('ref_features', ref_features.shape, ref_features)
+            print('ref_features', ref_features.shape, ref_features, type(ref_features))
 
         # Calculate VGG-16 features for generated images.
         print('Generating images...')
@@ -350,9 +350,9 @@ def compute_stylegan_ccr_from_imgs(datareader, minibatch_size, num_images, ccrs,
             end = min(begin + minibatch_size, num_images)
 
             # TODO: tfrecordなしでのデータ読み込み
-            dataset = dataset_load(path='')
+            dataset = dataset_load_from_img(path='/content/drive/My Drive/stylegan2encoder/out/Johnnys103/face-1024x1024/imgs/')
             # TODO: tfrecordなしでのバッチ作成
-                # TODO: real_batch.shapeを確認
+                # TODO: real_batch.shapeを確認  # (8,3,n,n) n = 2^a, *_a.tfrecords
             
             real_batch, _ = datareader.get_minibatch_np(end - begin)
             ref_features[begin:end] = feature_net.run(real_batch, num_gpus=num_gpus, assume_frozen=True)
@@ -362,7 +362,7 @@ def compute_stylegan_ccr_from_imgs(datareader, minibatch_size, num_images, ccrs,
         eval_features = np.zeros([num_images, feature_net.output_shape[1]], dtype=np.float32)
 
         # TODO: 生成済み画像を使用、2048枚読み込み
-        gen_images = dataset_load_from_img()
+        gen_images = dataset_load(path='/content/drive/My Drive/stylegan2encoder/out/rizin112/face-1024x1024/2048/imgs/ccr' + f'{ccr:.02f}')
 
         for begin in range(0, num_images, minibatch_size):
             end = min(begin + minibatch_size, num_images)
@@ -396,14 +396,18 @@ def compute_stylegan_ccr_from_imgs(datareader, minibatch_size, num_images, ccrs,
                    delimiter=',', comments='')
 
 
-def dataset_load_from_img(path=''):
+def dataset_load_from_img(path_img=''):
     # load dataset from npy
-    paths = glob.glob(os.path.join(path, '*.png'))
-    paths = sorted(path)
+    paths = glob.glob(os.path.join(path_img, '*.png'))
+    paths = sorted(paths)
     
     imgs = []
     for path in paths:
         img = cv2.imread(path)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        img = img.transpose([2, 0, 1])
         imgs.append(img)
-    return imgs 
+
+    imgs_np = np.array(imgs)
+    print(imgs_np.shape)
+    return imgs_np 
