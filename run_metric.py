@@ -16,6 +16,7 @@ from dnnlib.util import Logger
 from ffhq_datareader import load_dataset
 from experiments import compute_stylegan_realism
 from experiments import compute_stylegan_truncation
+from experiments import compute_stylegan_ccr_from_imgs
 from utils import init_tf
 
 SAVE_PATH = os.path.dirname(__file__)
@@ -27,7 +28,12 @@ realism_config = dnnlib.EasyDict(minibatch_size=8, num_images=50000, num_gen_ima
                                  truncation=1.0, save_images=True, save_path=SAVE_PATH, num_gpus=1,
                                  random_seed=123456)
 
-truncation_config = dnnlib.EasyDict(minibatch_size=8, num_images=50000, truncations=[1.0, 0.7, 0.3],
+# truncation_config = dnnlib.EasyDict(minibatch_size=8, num_images=50000, truncations=[1.0, 0.7, 0.3],
+#                                     save_txt=True, save_path=SAVE_PATH, num_gpus=1, random_seed=1234)
+truncation_config = dnnlib.EasyDict(minibatch_size=8, num_images=50000, truncations=[0.5],
+                                    save_txt=True, save_path=SAVE_PATH, num_gpus=1, random_seed=1234)
+
+ccr_config = dnnlib.EasyDict(minibatch_size=8, num_images=50000, ccrs=[0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.00],
                                     save_txt=True, save_path=SAVE_PATH, num_gpus=1, random_seed=1234)
 
 #----------------------------------------------------------------------------
@@ -58,6 +64,12 @@ def parse_command_line_arguments(args=None):
         action='store_true',
         help='Calculate realism score for StyleGAN samples. Replicates Fig. 11 from Appendix.'
     )
+    parser.add_argument(
+        '-c',
+        '--ccr_sweep',
+        action='store_true',
+        help='Calculate StyleGAN ccr sweep.'
+    )
     parsed_args, _ = parser.parse_known_args(args)
     return parsed_args
 
@@ -82,6 +94,10 @@ def main(args=None):
     if parsed_args.truncation_sweep:  # Compute truncation sweep.
         truncation_config.datareader = dataset_obj
         compute_stylegan_truncation(**truncation_config)
+
+    if parsed_args.ccr_sweep:  # Compute ccr sweep.
+        ccr_config.datareader = dataset_obj
+        compute_stylegan_ccr_from_imgs(**ccr_config)
 
     peak_gpu_mem_op = tf.contrib.memory_stats.MaxBytesInUse()
     peak_gpu_mem_usage = peak_gpu_mem_op.eval()
