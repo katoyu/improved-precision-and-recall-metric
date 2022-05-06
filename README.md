@@ -1,6 +1,6 @@
 katoyu MEMO
 
-git config --global user.email "yuik2525@gmail.com"
+git config --global user.email "yuik2525@gmail.com" \
 git config --global user.name "katoyu"
 
 
