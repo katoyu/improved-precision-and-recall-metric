@@ -2,3 +2,6 @@ _cache/
 __pycache__/
 tfrecords*/
 evaluate_results/
+.stylegan2-cache/
+stylegan2encoder/.stylegan2-cache/
+stylegan2encoder/latent_representations/
